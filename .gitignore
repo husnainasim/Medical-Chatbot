@@ -1,0 +1,30 @@
+venv/
+logs/
+RAG_Medcal_Chatbot.egg-info/
+.env
+
+# =========================
+# 🐍 Python cache / builds
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+
+# =========================
+# 🧪 Testing / temp
+# =========================
+.coverage
+htmlcov/
+.pytest_cache/
+.cache/
+
+FULL_DOCUMENTATION.md
+
+# Packaging
+build/
+dist/
+*.egg-info/
+.eggs/
