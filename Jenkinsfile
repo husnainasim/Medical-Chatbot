@@ -6,7 +6,6 @@ pipeline {
         ECR_REPO = 'medical-chatbot'
         IMAGE_TAG = 'latest'
         SERVICE_NAME = 'llmops-medical-service'
-        DOCKER_BUILDKIT = '1'
     }
 
     stages {
@@ -75,6 +74,6 @@ pipeline {
         //         }
         //     }
         // }
-        
+
     }
 }
