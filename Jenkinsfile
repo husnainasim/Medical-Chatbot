@@ -18,7 +18,41 @@ pipeline {
             }
         }
 
-        stage('Build, Scan, and Push Docker Image to ECR') {
+        // stage('Build, Scan, and Push Docker Image to ECR') {
+        //     steps {
+        //         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-token']]) {
+        //             script {
+        //                 def accountId = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
+        //                 def ecrUrl = "${accountId}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.ECR_REPO}"
+        //                 def imageFullTag = "${ecrUrl}:${IMAGE_TAG}"
+
+        //                 sh """
+        //                 set -e
+                        
+        //                 echo 'Logging into ECR...'
+        //                 aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ecrUrl}
+                        
+        //                 echo 'Building Docker image...'
+        //                 docker build -t ${env.ECR_REPO}:${IMAGE_TAG} .
+                        
+        //                 echo 'Tagging image...'
+        //                 docker tag ${env.ECR_REPO}:${IMAGE_TAG} ${imageFullTag}
+                        
+        //                 echo 'Pushing to ECR...'
+        //                 docker push ${imageFullTag}
+                        
+        //                 echo 'Running Trivy scan (vulnerability only, faster)...'
+        //                 trivy image --scanners vuln --severity HIGH,CRITICAL --format json \
+        //                     --timeout 5m -o trivy-report.json ${imageFullTag} || true
+        //                 """
+
+        //                 archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
+        //             }
+        //         }
+        //     }
+        // }
+
+          stage('Build, Scan, and Push Docker Image to ECR') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-token']]) {
                     script {
@@ -32,8 +66,17 @@ pipeline {
                         echo 'Logging into ECR...'
                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ecrUrl}
                         
-                        echo 'Building Docker image...'
-                        docker build -t ${env.ECR_REPO}:${IMAGE_TAG} .
+                        echo 'Building Docker image (timeout: 30 minutes)...'
+                        timeout 1800 docker build \
+                            --build-arg PIP_DEFAULT_TIMEOUT=300 \
+                            --build-arg PIP_RETRIES=10 \
+                            -t ${env.ECR_REPO}:${IMAGE_TAG} . || \
+                        (echo "Build failed, retrying..." && \
+                        timeout 1800 docker build \
+                            --build-arg PIP_DEFAULT_TIMEOUT=300 \
+                            --build-arg PIP_RETRIES=10 \
+                            --no-cache \
+                            -t ${env.ECR_REPO}:${IMAGE_TAG} .)
                         
                         echo 'Tagging image...'
                         docker tag ${env.ECR_REPO}:${IMAGE_TAG} ${imageFullTag}
@@ -41,7 +84,7 @@ pipeline {
                         echo 'Pushing to ECR...'
                         docker push ${imageFullTag}
                         
-                        echo 'Running Trivy scan (vulnerability only, faster)...'
+                        echo 'Running Trivy scan...'
                         trivy image --scanners vuln --severity HIGH,CRITICAL --format json \
                             --timeout 5m -o trivy-report.json ${imageFullTag} || true
                         """
